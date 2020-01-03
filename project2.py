@@ -31,6 +31,10 @@ def visible(top):
             g = b2
         g.place(x = g.x, y=e.y-75)
     top.bind('<Motion>',move)
+
+    def click(e):
+        ball = Ball(top,(e.x,e.y))
+    top.bind('<ButtonRelease>',click)
 ##    top2 = t.Toplevel()
 ##    top2.title(top.title())
 c = t.Canvas(top)
@@ -89,6 +93,36 @@ class Bar2(t.Button):
 ##        #print e.x - self.parent.my_half
 ####            self.place(x = self.x, y = e.y - 85)
 
+class Ball(t.Button):
+
+    def __init__(self,parent,coordinates = (0,0),**kw):
+        self.parent = parent
+        t.Button.__init__(self,parent,**kw)
+        self['bitmap'] = 'error'
+        self['relief'] = 'flat'
+
+        self.x , self.y = coordinates
+        self.incx = 3
+        self.incy = 3
+        self.place(x=self.x,y=self.y)
+        self.moving = 1
+        self.start()
+
+    def start(self):
+        self.x += self.incx
+        self.y +=self.incy
+
+        if self.x >= self.parent.my_width or self.x <= 0:
+            self.incx *= -1
+        if self.y >= self.parent.my_height or self.y <= 0:
+            self.incy *= -1
+
+        self.place(x=self.x,y=self.y)
+        if self.moving:
+            self.after(20,self.start)
+
+    def pause(self):
+        self.moving = False
 top.title("Socket Ping")
 ##U+2589
 
