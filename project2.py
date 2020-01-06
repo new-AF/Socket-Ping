@@ -1,29 +1,18 @@
-import Tkinter as t
+import tkinter as t
 import time
+
 top = t.Tk()
-def res(e):
-    #print (dir(e),e.width,e.height)
-    c['width']=e.width
-    c['height']=e.height
-    return False
-def visible(top):
-    g = top.geometry()
-    g = g.replace('x','+').replace('-','+').split('+')
-    g = map(int,g)[0:2]
-    print (g)
-    w,h = g
-    top.my_width = w
-    top.my_half = int(w/2)
-    top.my_height = h
 
-    top.unbind('<Visibility>')
-    #set_canvas(top)
-    #br = Bar(c)
+
+
+def put():
     b = Bar2(top,highlightcolor='red',relief='raised',bd=5,bg = 'green',width =5,height = 10,text='')
-
 
     b2 = Bar2(top,(10,10),highlightcolor='red',relief='raised',bd=5,bg = 'green',width =5,height = 10,text='')
 
+    top.my_half = top.winfo_width() / 2
+
+    top.Vline = t.Label(top,text='',bg='gray80',width=1)
     def move(e):
         if e.x - top.my_half > 0:
             g = b
@@ -35,19 +24,10 @@ def visible(top):
     def click(e):
         ball = Ball(top,(e.x,e.y),target = (b,b2)  )
     top.bind('<ButtonRelease>',click)
-##    top2 = t.Toplevel()
-##    top2.title(top.title())
-c = t.Canvas(top)
-c.pack(side=t.TOP,fill=t.BOTH,expand=1)
 
-##class Active:
-##    def __init__(self,target,criteria):
-##        self.one,self.two = target
-##        self.widget,self.function = criteria
-##    def get(self):
-##        return self.one if self.function(self.widget) else self.two
+    top.Vline.place(relx=0.5,rely=0,relheight=1,anchor=t.N)
 class Bar:
-    def __init__(self,parent,inset=(-10,-10)):
+    def __init__(self,parent,inset=(-10,-10),**kw):
         self.parent = parent
         self.px = 10
         self.py = 10
@@ -55,12 +35,13 @@ class Bar:
         self.ph = 100
         x,y = inset
         if x<0:
-            x = top.my_width + x - self.pw
+            x = top.winfo_width()  + x - self.pw
             self['text'] = 'right'
         else:
             self['text'] = 'left'
         if y<0:
-            y= top.my_height + y- self.ph
+            y= top.winfo_height() + y- self.ph
+
         self.x = x
         self.y = y
         """position: (tuple) (position_string =="""
@@ -70,7 +51,7 @@ class Bar:
     def move(self,e):
         self.parent.coords(self.r,self.x,e.y-30,self.y,e.y+30)
 
-class Bar2(t.Button):
+class Bar2(t.Label):
     def __init__(self,parent,inset=(-10,-10),**kw):
         self.parent = parent
         self.px = 10
@@ -79,19 +60,38 @@ class Bar2(t.Button):
         self.ph = 100
         x,y = inset
 
-        t.Button.__init__(self,parent,anchor='nw',**kw)
+        t.Label.__init__(self,parent,anchor='nw',**kw)
         if x<0:
-            x = top.my_width + x - self.pw
-            self['text'] = 'right'
+            x = top.winfo_width() + x - self.pw
+
+            self.num = 1
         else:
-            self['text'] = 'left'
-        if y<0:
-            y= top.my_height + y- self.ph
+
+            self.num = 2
+
+        self['text'] = ['right','left'][self.num-1]
+
         self.x = x
         self.y = y
 
         self.place(x = x,y = y)
         self.bind('<Visibility>',self.visible)
+
+        self.put_scores_on_screen()
+
+    def put_scores_on_screen(self):
+
+        self.name_var = getattr(top,'Xvar%d'%self.num)
+        self.score_var = getattr(top,'Xscr%d'%self.num)
+
+        self.player_label = t.Label(top,text = self.name_var.get(),font = 'system 20 bold')
+        pos = [(t.N+t.W,0.05),(t.N+t.E,0.95)][self.num-1]
+
+        self.player_label.place(relx = pos[1],rely=0.0,anchor = pos[0])
+
+        self.score_label = t.Label(top,textvariable = self.score_var,font = 'system 20 bold')
+
+        self.score_label.place(relx = pos[1],y=self.score_label.winfo_reqheight()+5,anchor = pos[0])
     def visible(self,e):
 
         self.width,self.height = (self.winfo_width(),self.winfo_height())
@@ -146,14 +146,19 @@ class Ball(t.Button):
 ##        print (self.target[0]['text'])
         #print (self.target[0].winfo_x(),self.target[0].winfo_y(),'collision')
         #target = self.target.get()
-        if self.x >= self.parent.my_width or self.x <= 0:
+        if self.x >= self.parent.winfo_width():
+            top.Xscr2.set(top.Xscr2.get()+1)
             self.incx *= -1
-
+        if self.x <= 0:
+            top.Xscr1.set(top.Xscr1.get()+1)
+            self.incx *= -1
+            #self.target
         if  self.collide(0) or self.collide(1):
             self.incx *= -1
             #print (time.clock(),'collision')
+            #top.bell()
 
-        if self.y >= self.parent.my_height or self.y <= 0:
+        if self.y >= self.parent.winfo_height() or self.y <= 0:
             self.incy *= -1
 
         self.place(x=self.x,y=self.y)
@@ -162,11 +167,71 @@ class Ball(t.Button):
 
     def pause(self):
         self.moving = False
-top.title("Socket Ping")
-##U+2589
 
-detour = lambda i: visible(top)
-top.bind('<Visibility>',detour)
+class Intro(t.Frame):
+    def __init__(self,parent = None):
+        t.Frame.__init__(self,parent if parent else top)
+        self.pack(side=t.TOP,fill='both',expand = 1)
+        s = self
+
+        s.bind("<Visibility>", s.put_on_screen)
+
+        top.Xvar1=t.StringVar()
+        top.Xvar2 = t.StringVar(value='Player2')
+        top.Xscr1 = t.IntVar(value=0)
+        top.Xscr2 = t.IntVar(value=0)
+        self.ee = t.Label(self,text='',font = 'system 20')
+        c = self.c = t.Label(self,text = 'Enter your Name', font = 'system 20 bold', anchor = t.N)
+        self.title = t.Label(self,padx=10,pady=10,relief='groove',bd=10,text = 'Sockets Ping Pong', font = 'system 30 bold', anchor = t.N)
+        self.text= t.Entry(self,textvariable=top.Xvar1,bg = top['bg'],insertborderwidth = 5, justify=t.CENTER, font = 'system 20 bold')
+        self.text.bind('<KeyPress-Return>',self.entered)
+        #print (c.winfo_width(),c.winf)
+
+    def entered(self,e):
+        print (top.Xvar1.get())
+        print ('***',top.pack_slaves())
+        self.pack_forget()
+        print ('***',top.pack_slaves())
+        put()
+
+    def put_on_screen(self,e):
+        c = self.c
+
+        w,h = c.winfo_width(),c.winfo_height()
+
+        self.title.pack(pady= '0.5i',side =  t.TOP,fill = t.X,expand = 1)
+        self.ee.pack(pady='0.1i',fill = t.X,expand = 1)
+        self.text.pack(pady='0.5i',side =  t.BOTTOM,fill = t.X,expand = 1)
+        self.c.pack(side =  t.BOTTOM,fill = t.X,expand = 1)
+        self.text.focus()
+
+class PList(t.Frame):
+    def __init__(self,p=top,**kw):
+        self.parent = p
+        t.Frame.__init__(self,self.parent)
+        self.a = []
+        self.pack(fill='both',expand = 1)
+        self.add('Pick an opponent',None)
+        self.add('',None)
+        self.add('23')
+
+
+    def add(self,text,cur = 'hand2'):
+        item = t.Label(self,text=text,font = 'system 20 bold')
+        if cur:
+            item['cursor'] = cur
+            item.bind('<ButtonRelease>',self.click)
+        self.a += [item]
+        item.pack(fill='x',expand=1)
+
+
+    def click(self):
+        pass
+intro = Intro()
+top.title("Sockets Ping Pong")
+##U+2589
+##detour = lambda i: put()
+##top.bind('<Visibility>',detour)
 ##top.bind('<Configure>',res)
 top['cursor']='plus'
 top.tk_bisque()
