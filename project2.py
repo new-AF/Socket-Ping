@@ -1,8 +1,42 @@
-import tkinter as t
+import Tkinter as t
 import time
+#import asyncio
+#import websockets
+from PIL import ImageTk,Image
+import socketio
+
+
+sio = socketio.Client()
+
+
+
 
 top = t.Tk()
+Pos = ''
 
+
+@sio.event
+def connect(data = None):
+    sio.emit('get_my_name')
+
+
+@sio.event
+def my_name(data):
+    global Pos
+    Pos = data
+    print ('my_name',data)
+
+sio.connect('http://damp-basin-29915.herokuapp.com')
+#sio.connect('http://localhost:5000')
+
+def tk_image(fname,*rest ):
+    p = Image.open(fname) # pillow_image
+
+    if rest:
+        p = p.resize(rest[0:2])
+
+    i = ImageTk.PhotoImage(p)
+    return i
 
 
 def put():
@@ -21,6 +55,31 @@ def put():
         g.place(x = g.x, y=e.y-75)
     top.bind('<Motion>',move)
 
+    @sio.event
+    def move2(e,serv = 0):
+        g = [b,b2] [Pos]
+        inc = 10
+        if e.keysym.lower() == 'up':
+            inc = -10
+
+        elif e.keysym.lower() == 'down':
+            inc = 10
+
+        sio.emit('save',{'Pos':Pos,'inc':inc})
+
+    @sio.event
+    def move3(data):
+
+        pos = data['Pos']
+        inc = data['inc']
+
+        g = [b,b2] [pos]
+
+        g.y += inc
+        b.place(x=g.x , y = g.y)
+
+
+    top.bind('<KeyPress>',move2)
     def click(e):
         ball = Ball(top,(e.x,e.y),target = (b,b2)  )
     top.bind('<ButtonRelease>',click)
@@ -64,12 +123,12 @@ class Bar2(t.Label):
         if x<0:
             x = top.winfo_width() + x - self.pw
 
-            self.num = 1
+            self.num = 0
         else:
 
-            self.num = 2
+            self.num = 1
 
-        self['text'] = ['right','left'][self.num-1]
+        self['text'] = ['right','left'][self.num]
 
         self.x = x
         self.y = y
@@ -79,17 +138,24 @@ class Bar2(t.Label):
 
         self.put_scores_on_screen()
 
+    def get_score(self,x):
+        return getattr(top,'Xscr%d'%x)
+
     def put_scores_on_screen(self):
 
-        self.name_var = getattr(top,'Xvar%d'%self.num)
-        self.score_var = getattr(top,'Xscr%d'%self.num)
+
+        self.all_num = [top.Xvar0,top.Xvar1]
+        self.all_scr = [top.Xscr0,top.Xscr1]
+
+        self.name_var = self.all_num[self.num]
+        oppo = int (not self.num)
 
         self.player_label = t.Label(top,text = self.name_var.get(),font = 'system 20 bold')
         pos = [(t.N+t.W,0.05),(t.N+t.E,0.95)][self.num-1]
 
         self.player_label.place(relx = pos[1],rely=0.0,anchor = pos[0])
 
-        self.score_label = t.Label(top,textvariable = self.score_var,font = 'system 20 bold')
+        self.score_label = t.Label(top,textvariable = self.get_score(oppo),font = 'system 20 bold')
 
         self.score_label.place(relx = pos[1],y=self.score_label.winfo_reqheight()+5,anchor = pos[0])
     def visible(self,e):
@@ -112,7 +178,8 @@ class Ball(t.Button):
         self.target = kw.pop('target')
         self.parent = parent
         t.Button.__init__(self,parent,anchor='nw',**kw)
-        self['bitmap'] = 'error'
+        self.image = tk_image('4.png')
+        self['image'] = self.image
         self['relief'] = 'flat'
 
         self.x , self.y = coordinates
@@ -147,7 +214,7 @@ class Ball(t.Button):
         #print (self.target[0].winfo_x(),self.target[0].winfo_y(),'collision')
         #target = self.target.get()
         if self.x >= self.parent.winfo_width():
-            top.Xscr2.set(top.Xscr2.get()+1)
+            top.Xscr0.set(top.Xscr0.get()+1)
             self.incx *= -1
         if self.x <= 0:
             top.Xscr1.set(top.Xscr1.get()+1)
@@ -176,10 +243,10 @@ class Intro(t.Frame):
 
         s.bind("<Visibility>", s.put_on_screen)
 
-        top.Xvar1=t.StringVar()
-        top.Xvar2 = t.StringVar(value='Player2')
+        top.Xvar0=t.StringVar()
+        top.Xvar1 = t.StringVar(value='Player2')
+        top.Xscr0 = t.IntVar(value=0)
         top.Xscr1 = t.IntVar(value=0)
-        top.Xscr2 = t.IntVar(value=0)
         self.ee = t.Label(self,text='',font = 'system 20')
         c = self.c = t.Label(self,text = 'Enter your Name', font = 'system 20 bold', anchor = t.N)
         self.title = t.Label(self,padx=10,pady=10,relief='groove',bd=10,text = 'Sockets Ping Pong', font = 'system 30 bold', anchor = t.N)
@@ -188,10 +255,12 @@ class Intro(t.Frame):
         #print (c.winfo_width(),c.winf)
 
     def entered(self,e):
-        print (top.Xvar1.get())
-        print ('***',top.pack_slaves())
+        name = top.Xvar1.get()
+        #print (name)
+        #print ('***',top.pack_slaves())
         self.pack_forget()
-        print ('***',top.pack_slaves())
+        #print ('***',top.pack_slaves())
+        sio.emit('')
         put()
 
     def put_on_screen(self,e):
