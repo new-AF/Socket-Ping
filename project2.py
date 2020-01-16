@@ -6,7 +6,7 @@ from PIL import ImageTk,Image
 import socketio
 
 
-sio = socketio.Client()
+socket = socketio.Client()
 
 
 
@@ -15,19 +15,19 @@ top = t.Tk()
 Pos = ''
 
 
-@sio.event
+@socket.event
 def connect(data = None):
-    sio.emit('get_my_name')
+    socket.emit('get_my_name')
 
 
-@sio.event
+@socket.event
 def my_name(data):
     global Pos
     Pos = data
     print ('my_name',data)
 
-sio.connect('http://damp-basin-29915.herokuapp.com')
-#sio.connect('http://localhost:5000')
+socket.connect('http://damp-basin-29915.herokuapp.com')
+#socket.connect('http://localhost:5000')
 
 def tk_image(fname,*rest ):
     p = Image.open(fname) # pillow_image
@@ -55,7 +55,7 @@ def put():
         g.place(x = g.x, y=e.y-75)
     top.bind('<Motion>',move)
 
-    @sio.event
+    @socket.event
     def move2(e,serv = 0):
         g = [b,b2] [Pos]
         inc = 10
@@ -65,9 +65,9 @@ def put():
         elif e.keysym.lower() == 'down':
             inc = 10
 
-        sio.emit('save',{'Pos':Pos,'inc':inc})
+        socket.emit('save',{'Pos':Pos,'inc':inc})
 
-    @sio.event
+    @socket.event
     def move3(data):
 
         pos = data['Pos']
@@ -260,7 +260,7 @@ class Intro(t.Frame):
         #print ('***',top.pack_slaves())
         self.pack_forget()
         #print ('***',top.pack_slaves())
-        sio.emit('')
+        socket.emit('')
         put()
 
     def put_on_screen(self,e):
