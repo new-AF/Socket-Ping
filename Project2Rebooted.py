@@ -26,7 +26,7 @@ class App:
 		self.top.destroy()
 	
 	def connect(self,e):
-		print("connecting ...")
+		self.l2['text'] = 'Connecting ... to'
 	
 		self.socket = socketio.Client()
 		self.socket.on('connect',self.connected)
@@ -39,12 +39,14 @@ class App:
 		
 	def my_name(self,data):
 		d = data
-		print 'got',data,type(data)
+		#print 'got',data,type(data)
+		self.l2['text']= 'Connection Established !'
+		#self.l3['label'] = 'Press Enter to Proceed'
 		self.top.after(500,self.playshow,0,d)
 		#self.playshow(side = d)
 	
 	def connected(self):
-		print ('connected',self)
+		#print ('connected',self)
 		self.socket.emit('get_my_name')
 		
 		
@@ -79,8 +81,8 @@ class App:
 			self.p1	#paddle 1 / bar1
 		except:
 			self.intro(hide = 1)
-			self.p1 = t.Button(self.top,text='Left',height = 25,bg='blue', width= 10)
-			self.p2 = t.Button(self.top,text='Right',height = 25,bg='blue', width = 10)
+			self.p1 = t.Button(self.top,text='Left',height = 15,bg='green', width= 8)
+			self.p2 = t.Button(self.top,text='Right',height = 15,bg='green', width = 8)
 			self.p1.svar = t.StringVar()
 			self.p2.svar = t.StringVar()
 			self.p1.ivar = t.IntVar(0)
@@ -91,7 +93,7 @@ class App:
 			self.s2 = t.Label(self.top,textvariable = self.p2.svar,font = 'system 20')
 			self.own = [self.p1,self.p2] [side]
 			self.owncode = side
-			self.top.title('{}'.format(self.owncode))
+			self.top.title('{}'.format(self.own['text']))
 			self.other = [self.p1,self.p2] [not side]
 			
 			#self.socket.emit('update_score',self.owncode)
@@ -120,12 +122,12 @@ class App:
 			self.f1
 		except:
 			self.f1 = t.Frame(self.top)
-			self.l1 = t.Label(self.f1,text='sockets ping pong',font = 'system 20 bold')
-			self.l2 = t.Label(self.f1,text='connecting to server at\n{}'.format(self.ip),font = 'system 20 bold')
-			self.l3 = t.Label(self.f1,text='Enter your name',font = 'system 20 bold')
+			self.l1 = t.Label(self.f1,padx=10,pady=10,relief='groove',bd=10,text='Sockets ping pong',font = 'system 30 bold')
+			self.l2 = t.Label(self.f1,text='Press Enter to connect to server @',font = 'system 10 bold')
+			self.l3 = t.Label(self.f1,text='{}'.format(self.ip),font = 'system 10 bold')
 			self.name = t.StringVar()
-			self.t1 = t.Entry(self.f1,textvariable = self.name)
-			self.t1.bind('<KeyRelease-Return>',self.connect)
+			self.t1 = t.Label(self.f1,text = 'github.com/new-AF',font = 'system 10 bold',relief = 'groove')
+			self.top.bind('<KeyRelease-Return>',self.connect)
 			
 			for i in ('l1 l2 l3 t1'.split() ):
 				w = getattr(self,i)
@@ -168,8 +170,7 @@ class App:
 		if self.moving:
 			x,y = self.ball
 			self.ballW.place( x = self.ball[0] , y = self.ball[1] )
-			#print self.ball
-			#print self.other.winfo_geometry()
+			
 			if self.collide(self.own) or self.collide(self.other):
 				self.Inc[0] *= -1
 			
@@ -199,44 +200,14 @@ class App:
 		return c1 and c2
 	
 	def getupdated(self,data):
-		print 'getting score'
 		d = data
-		w = [self.p1,self.p2][ not d]
-		print w['text']
+		w = [self.own,self.other][not d]
 		old = w.ivar.get()
 		w.ivar.set(old+1)
 	
 	def sendScore(self,x):
-		print 'sending score'
+		#print 'sending score'
 		self.socket.emit('update_score', (x < self.top.winfo_width()/2) and self.owncode  )
-'''
-A = None
 
-@socket.event
-def connect(data = None):
-    socket.emit('get_my_name')
-
-
-@socket.event
-def my_name(data):
-    global A
-    print ('my_name',data)
-    A = App(top,data)
-    
-
-def tk_image(fname,*rest ): #rest : resize -> tuple(w,h)
-    p = Image.open(fname)
-
-    if rest:
-        p = p.resize(rest[0:2])
-
-    i = ImageTk.PhotoImage(p)
-    return i
-
-socket.connect('http://damp-basin-29915.herokuapp.com')
-
-top.tk_bisque()
-top.mainloop()
-'''
 if __name__ == '__main__':
     App(ip = 'http://damp-basin-29915.herokuapp.com')
