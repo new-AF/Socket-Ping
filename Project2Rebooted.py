@@ -32,6 +32,8 @@ class App:
 		self.socket.on('connect',self.connected)
 		self.socket.on('my_name',self.my_name)
 		self.socket.on('getmoved',self.getmoved)
+		self.socket.on('startBall',self.startBall)
+		self.socket.on('getupdated',self.getupdated)
 		self.socket.connect(self.ip)
 		#self.connected()
 		
@@ -79,17 +81,23 @@ class App:
 			self.intro(hide = 1)
 			self.p1 = t.Button(self.top,text='Left',height = 25,bg='blue', width= 10)
 			self.p2 = t.Button(self.top,text='Right',height = 25,bg='blue', width = 10)
-			
+			self.p1.svar = t.StringVar()
+			self.p2.svar = t.StringVar()
+			self.p1.ivar = t.IntVar(0)
+			self.p2.ivar = t.IntVar(0)
+			self.score1 = t.Label(self.top,textvariable = self.p1.ivar,font = 'system 20')
+			self.score2 = t.Label(self.top,textvariable = self.p2.ivar,font = 'system 20')
+			self.s1 = t.Label(self.top,textvariable = self.p1.svar,font = 'system 20')
+			self.s2 = t.Label(self.top,textvariable = self.p2.svar,font = 'system 20')
 			self.own = [self.p1,self.p2] [side]
 			self.owncode = side
 			self.top.title('{}'.format(self.owncode))
 			self.other = [self.p1,self.p2] [not side]
-				
-		
+			
+			#self.socket.emit('update_score',self.owncode)
 		
 			self.top.bind('<KeyPress-Up>',self.moveup)
 			self.top.bind('<KeyPress-Down>',self.movedo)
-			
 			#self.scores()
 			#self.top.bind('KeyRelease-Return',startball)
 			
@@ -99,8 +107,14 @@ class App:
 		else:
 			self.p1.place(relx = 0.1, rely=0.2,anchor = 'nw')
 			self.p2.place(relx = 0.9, rely=0.2,anchor = 'ne')
-			
-			
+			self.s1.place(relx = 0.2,rely = 0.01, anchor = 'n')
+			self.s2.place(relx = 0.8,rely = 0.01, anchor = 'n')
+			self.score1.place(relx = 0.2,rely = 0.1, anchor = 'n')
+			self.score2.place(relx = 0.8,rely = 0.1, anchor = 'n')
+			#self.socket.emit('startBall')
+			self.y = self.own.winfo_y()
+			self.startBall()
+	
 	def intro(self,hide = 0):
 		try:
 			self.f1
@@ -124,15 +138,77 @@ class App:
 			self.f1.place(x=0,y=0,relwidth=1,relheight=1)
 			self.t1.focus()
 	
-	def startball(self,begin = 0):
+	def createBall(self, w = 20, h= 20):
 		try:
-			self.ballxy
+			self.ballW
 		except:
-			self.ballxy = [int(self.top.winfo_width()/2),int(self.top.winfo_height()/2)]
+			self.ballW = t.Canvas(self.top, width = w, height = h, relief= 'flat',borderwidth = 0)
+			self.ballW.create_oval( 0,0,w,h, fill = 'black')
+
+	def startBall(self, hide=0,reset = 0):
+		self.ball = [  self.top.winfo_width()/2 , self.top.winfo_height()/2 ]
+		self.ball = map(int,self.ball)
+		self.Inc = [3, 3]
 		
-		if begin:
-			pass
+		if reset:
+			return
+		try:
+			self.ballW
+		except:
+			self.createBall()
+	
+		self.moveBall()
+	
+	def moveBall(self):
+		try:
+			self.moving
+		except:
+			self.moving = 1
+		
+		if self.moving:
+			x,y = self.ball
+			self.ballW.place( x = self.ball[0] , y = self.ball[1] )
+			#print self.ball
+			#print self.other.winfo_geometry()
+			if self.collide(self.own) or self.collide(self.other):
+				self.Inc[0] *= -1
 			
+			if x >= self.top.winfo_width() or x<=0:
+				self.sendScore(x)
+				self.startBall(0,1)
+			
+			if y >= self.top.winfo_height() or y<=0:
+				self.Inc[1] *= -1
+			
+			self.ball[0] += self.Inc[0]
+			self.ball[1] += self.Inc[1]
+			self.top.after(30, self.moveBall )
+		
+	def collide(self,tar):
+
+		x,y = self.ball
+		w = self.ballW.winfo_width()
+		h = self.ballW.winfo_height()
+
+		tx,ty = tar.winfo_x(), tar.winfo_y()
+		th, tw = tar.winfo_height(), tar.winfo_width()
+
+		c1 = abs((x+w/2) - (tx + tw/2)) <= 5
+		c2 = y + h >= ty and y+h <= ty + th
+
+		return c1 and c2
+	
+	def getupdated(self,data):
+		print 'getting score'
+		d = data
+		w = [self.p1,self.p2][ not d]
+		print w['text']
+		old = w.ivar.get()
+		w.ivar.set(old+1)
+	
+	def sendScore(self,x):
+		print 'sending score'
+		self.socket.emit('update_score', (x < self.top.winfo_width()/2) and self.owncode  )
 '''
 A = None
 
